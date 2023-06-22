@@ -1,0 +1,101 @@
+version: '3'
+
+services:
+  jbpmn:
+    image: jboss/jbpm-server-full:7.61.0.Final
+    container_name: jbpmn
+    hostname: jbpmn
+    environment:
+       - JBPM_DB_DRIVER=postgres
+       - JBPM_DB_HOST=postgres
+    expose:
+      - "8080"
+      - "8001"
+    networks:
+      - appnet
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:14.1-alpine
+    container_name: postgres
+    hostname: postgres
+    environment:
+      - POSTGRES_DB=jbpm
+      - POSTGRES_USER=jbpm
+      - POSTGRES_PASSWORD=jbpm
+    expose:
+      - "5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - appnet
+
+  nginx:
+    image: nginx:1.25.1-alpine3.17
+    container_name: nginx
+    hostname: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - monitoring
+      - appnet
+    depends_on:
+      - jbpmn
+      - grafana
+
+  prometheus:
+    image: prom/prometheus:v2.44.0
+    container_name: prometheus
+    hostname: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    expose:
+      - "9090"
+    depends_on:
+      - node-exporter
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    hostname: grafana
+    user: root
+    expose:
+      - "3000"
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    environment:
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+
+  node-exporter:
+    image: prom/node-exporter:v1.6.0
+    container_name: node-exporter
+    hostname: node-exporter
+    expose:
+      - "9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - monitoring
+
+networks:
+  appnet:
+  monitoring:
+
+volumes:
+  db:
+    driver: local

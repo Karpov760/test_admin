@@ -1,6 +1,8 @@
 # test_admin
 docker-compose with nginx, grafana, jbpmn etc
 
+Для запуска - docker-compose up -d
+
 По пустому пути / - jbpmn
 
 По /grafana - соответсвенно grafana с двумя дашбордами: метрики prometheus и node exporter
